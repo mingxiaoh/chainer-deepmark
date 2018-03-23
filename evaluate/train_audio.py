@@ -49,7 +49,7 @@ freq_size = 161
 label_length = 20
 
 if args.predictor == 'deepspeech2':
-    predictor = net.deepspeech2.DeepSpeech2(use_cudnn=args.cudnn)
+    predictor = net.deepspeech2.DeepSpeech2()
     def loss_function(predict, label):
         return F.connectionist_temporal_classification(predict, label, 0)
 elif args.predictor == 'fc5':
@@ -62,9 +62,16 @@ elif args.predictor == 'fc5':
 else:
     raise ValueError('Invalid architector:{}'.format(args.predictor))
 
+chainer.config.train = True
 if args.gpu >= 0:
+    chainer.config.use_cudnn = 'always'
     cuda.get_device(args.gpu).use()
     predictor.to_gpu()
+else:
+    chainer.config.use_cudnn = 'never'
+    predictor.to_intel64()
+
+
 optimizer = O.SGD()
 optimizer.setup(predictor)
 
@@ -75,7 +82,7 @@ forward_time = 0.0
 backward_time = 0.0
 update_time = 0.0
 
-print('iteration\tforward\tbackward\tupdate (in seconds)')
+print('iteration\tforward\tbackward\tupdate (in mseconds)')
 for iteration in six.moves.range(start_iteration, args.iteration):
     if args.gpu >= 0:
         cache.clear_cache(args.cache_level)
@@ -92,17 +99,17 @@ for iteration in six.moves.range(start_iteration, args.iteration):
     with timer.get_timer(xp) as t:
         predict = predictor(data)
         loss = loss_function(predict, label)
-    forward_time_one = t.total_time()
+    forward_time_one = t.total_time() * 1000
 
     # backward
     with timer.get_timer(xp) as t:
         loss.backward()
-    backward_time_one = t.total_time()
+    backward_time_one = t.total_time() * 1000
 
     # parameter update
     with timer.get_timer(xp) as t:
         optimizer.update()
-    update_time_one = t.total_time()
+    update_time_one = t.total_time() * 1000
 
     if iteration < 0:
         print('Burn-in\t{}\t{}\t{}'.format(forward_time_one, backward_time_one, update_time_one))
@@ -115,5 +122,28 @@ for iteration in six.moves.range(start_iteration, args.iteration):
 forward_time /= args.iteration
 backward_time /= args.iteration
 update_time /= args.iteration
+total_time = (forward_time + backward_time + update_time) / args.iteration
 
-print('Mean\t{}\t{}\t{}'.format(forward_time, backward_time, update_time))
+forward_sps = args.batchsize * 1000 / forward_time
+backward_sps = args.batchsize * 1000 / backward_time
+update_sps = args.batchsize * 1000 / update_time
+total_sps = args.batchsize * 1000 /total_time
+
+print('Mean Time\tforward_time\tbackward_time\tupdate_time\ttotal_time (in mseconds)')
+print('Mean Time\t{}\t{}\t{}\t{}'.format(round(forward_time,3), round(backward_time,3), round(update_time,3), round(total_time,3)))
+
+print('Mean SPS\tforward\tbackward_sps\tupdate_sps\ttotal_sps')
+print('Mean SPS\t{}\t{}\t{}\t{}'.format(round(forward_sps,3), round(backward_sps,3), round(update_sps,3),round(total_sps,3)))
+
+result = {
+        "arch_name": args.predictor,
+        "batch_size": args.batchsize,
+        "Forward": round(forward_sps,3),
+        "Backward": round(backward_sps,3),
+        "Uptade": round(update_sps,3),
+        "Total": round(total_sps,3)
+}
+print(result)
+
+
+
