@@ -31,7 +31,7 @@ class BigLSTM(link.Chain):
                                  linear.Linear(10, vocab_size))
         super(BigLSTM, self).__init__(embed=embed, rnns=rnns,
                                       linears=linears)
-        self.train = True
+        #self.train = True
         # initialize the bias vector of forget gates by 1.0.
 
     def reset_state(self):
@@ -45,7 +45,8 @@ class BigLSTM(link.Chain):
         for x in xs:
             for l in self.rnns:
                 x = l(x)
-                x = dropout.dropout(x, 0.25, self.train)
+                #x = dropout.dropout(x, 0.25, self.train)
+                x = dropout.dropout(x, 0.25)
             for l in self.linears:
                 x = l(x)
             x = reshape.reshape(x, x.data.shape + (-1,))
