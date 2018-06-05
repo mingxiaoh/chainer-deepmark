@@ -23,6 +23,7 @@ parser.add_argument('--iteration', '-i', type=int, default=10,
                     help='The number of iteration to be averaged over.')
 parser.add_argument('--timestep', '-t', type=int, default=200,
                     help='Timestep')
+parser.add_argument("--result", "-r", default=None, help="Result json file path.")
 parser.add_argument('--gpu', '-g', type=int, default=-1, help='GPU to use. Negative value to use CPU')
 parser.add_argument('--cudnn', '-c', action='store_true', help='If this flag is set, cuDNN is enabled.')
 parser.add_argument('--cache-level', '-C', type=str, default='none',
@@ -145,5 +146,7 @@ result = {
 }
 print(result)
 
-
+if args.result:
+   with open(args.result, 'w') as f:
+      json.dump(result, f)
 
