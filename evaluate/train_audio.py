@@ -7,6 +7,7 @@ from chainer import optimizers as O
 from chainer import cuda
 import numpy
 import six
+import json
 
 from deepmark_chainer import net
 from deepmark_chainer.utils import timer
